@@ -5,6 +5,7 @@ using System.Security.Principal;
 using System.Text;
 using NServiceBus;
 using NServiceBus.Tibco.Satellite;
+using NServiceBus.Unicast;
 using NServiceBus.Utils;
 
 namespace NServiceBus.Tibco.Endpoint
@@ -23,7 +24,7 @@ namespace NServiceBus.Tibco.Endpoint
             int i = 0;
             while (Console.ReadLine() != null)
             {
-                Bus.Publish<Foo>(foo => foo.Id = string.Format("Message {0}", i));
+                Bus.Publish<IFoo>(foo => foo.Id = string.Format("Message {0}", i));
             }
         }
 
@@ -42,14 +43,12 @@ namespace NServiceBus.Tibco.Endpoint
 
         public void Init(IRegisterIntent register)
         {
-            register.Publish<Foo>("hook");
-
+            register.Publish<IFoo>("hook");
         }
     }
 
-    [Serializable]
-    public class Foo : IEvent
+    public interface IFoo : IEvent
     {
-        public string Id { get; set; }
+        string Id { get; set; }
     }
 }

@@ -31,7 +31,7 @@ namespace NServiceBus.Tibco.Satellite
 
             
 
-//            TibcoEventPackage package;
+            TibcoEventPackage package;
 //
 //            using (var stream = new MemoryStream(message.Body))
 //            {
@@ -97,7 +97,7 @@ namespace NServiceBus.Tibco.Satellite
             foreach (var message in e.Messages)
             {
                 var type = message.GetType();
-                var publishers = _typeToPublish.Where(x => x.Value == type).ToList();
+                var publishers = _typeToPublish.Where(x => x.Value.IsAssignableFrom(type)).ToList();
                 if (publishers.Count == 0) continue;
 
                 var xml = "";
