@@ -48,21 +48,25 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="TIBCO.EMS, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>lib\TIBCO.EMS.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Configuration\TibcoEmsConfig.cs" />
+    <Compile Include="IRegisterIntent.cs" />
+    <Compile Include="IWantToRegisterIntentForTibco.cs" />
+    <Compile Include="MessageListener.cs" />
+    <Compile Include="TibcoConnection.cs" />
+    <Compile Include="TibcoDestination.cs" />
+    <Compile Include="TibcoEventPackage.cs" />
+    <Compile Include="Utlities\ObjectExtensions.cs" />
     <Compile Include="TibcoSatellite.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TibcoSettings.cs" />
+    <Compile Include="Configuration\TibcoSettings.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\TIBCO.EMS.FAKE\TIBCO.EMS.FAKE.csproj">
-      <Project>{43880C42-0D7C-482A-BAD4-246D72BA7AE7}</Project>
-      <Name>TIBCO.EMS.FAKE</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

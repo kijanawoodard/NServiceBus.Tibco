@@ -1,8 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Configuration;
 
-namespace NServiceBus.Tibco.Satellite
+namespace NServiceBus.Tibco.Satellite.Configuration
 {
     public class TibcoSettings : ConfigurationSection
     {
@@ -15,22 +14,6 @@ namespace NServiceBus.Tibco.Satellite
             get
             {
                 return (TibcoConnectionElementCollection)base[""];
-            }
-        }
-
-        public void Validate()
-        {
-            foreach (var connection in Connections)
-            {
-                foreach (var destination in connection.Destinations)
-                {
-                    destination.Validate();
-                }
-
-//                foreach (var queue in connection.Queues)
-//                {
-//                    queue.Validate();
-//                }
             }
         }
     }
@@ -152,27 +135,5 @@ namespace NServiceBus.Tibco.Satellite
             get { return (string)this["name"]; }
             set { this["name"] = value; }
         }
-
-//        [ConfigurationProperty("intent", IsRequired = false, DefaultValue = "subscribe")]
-//        public string Intent
-//        {
-//            get { return (string)this["intent"]; }
-//            set { this["intent"] = value; }
-//        }
-
-        public void Validate()
-        {
-//            var intent = Intent ?? IntentSubscribe;
-//            if (intent == IntentSubscribe || intent == IntentPublish)
-//                return;
-//
-//            throw new ArgumentException(string.Format("Did not understand intent configuration for tibco topic/queue: {0}. Valid values are {1} or {2}.", Name, IntentSubscribe, IntentPublish));
-        }
-
-//        public bool ShouldSubscribe { get { return Intent == IntentSubscribe; } }
-//        public bool ShouldPublish { get { return Intent == IntentPublish; } }
-//
-//        private const string IntentSubscribe = "subscribe";
-//        private const string IntentPublish = "publish";
     }
 }

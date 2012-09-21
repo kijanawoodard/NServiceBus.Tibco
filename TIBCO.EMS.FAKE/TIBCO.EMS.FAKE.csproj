@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>TIBCO.EMS.FAKE</RootNamespace>
-    <AssemblyName>TIBCO.EMS.FAKE</AssemblyName>
+    <AssemblyName>TIBCO.EMS</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
