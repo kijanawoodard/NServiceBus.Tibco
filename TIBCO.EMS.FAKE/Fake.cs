@@ -1031,7 +1031,7 @@ namespace TIBCO.EMS
     }
     public class MessageProducer
     {
-        protected MessageProducer()
+        public MessageProducer()
         {
         }
         public TIBCO.EMS.Destination Destination
@@ -1390,7 +1390,7 @@ namespace TIBCO.EMS
         }
         public TIBCO.EMS.MessageProducer CreateProducer(TIBCO.EMS.Destination param_dest)
         {
-            return null;
+            return new MessageProducer();
         }
         public void Unsubscribe(System.String param_name)
         {
@@ -1425,7 +1425,7 @@ namespace TIBCO.EMS
         }
         public TIBCO.EMS.TextMessage CreateTextMessage(System.String param_text)
         {
-            return null;
+            return new TextMessage(this, param_text);
         }
         public virtual void Commit()
         {
@@ -1656,15 +1656,13 @@ namespace TIBCO.EMS
         }
         public TextMessage(TIBCO.EMS.Session param_session, System.String param_text)
         {
+            Text = param_text;
         }
         protected TextMessage()
         {
         }
-        public System.String Text
-        {
-            get { return null; }
-            set { }
-        }
+
+        public System.String Text { get; set; }
         public override System.Object Clone()
         {
             return null;

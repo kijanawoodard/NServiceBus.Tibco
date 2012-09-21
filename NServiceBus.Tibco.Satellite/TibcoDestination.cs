@@ -28,7 +28,7 @@ namespace NServiceBus.Tibco.Satellite
                 SubscribeQueue(session, listener);
         }
 
-        public void SubscribeTopic(Session session, IMessageListener listener)
+        private void SubscribeTopic(Session session, IMessageListener listener)
         {
             var destination = session.CreateTopic(_name);
 
@@ -36,12 +36,22 @@ namespace NServiceBus.Tibco.Satellite
             sub.MessageListener = listener;
         }
 
-        public void SubscribeQueue(Session session, IMessageListener listener)
+        private void SubscribeQueue(Session session, IMessageListener listener)
         {
             var destination = session.CreateQueue(_name);
 
             var messageConsumer = session.CreateConsumer(destination);
             messageConsumer.MessageListener = listener;
+        }
+
+        public void Publish(Session session, string key, string data)
+        {
+            if (key != Key) return;
+
+            var destination = _type == "topic" ? session.CreateTopic(_name) as Destination : session.CreateQueue(_name);
+            var producer = session.CreateProducer(destination);
+            var message = session.CreateTextMessage(data);
+            producer.Send(message);
         }
     }
 }

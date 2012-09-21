@@ -46,6 +46,11 @@ namespace NServiceBus.Tibco.Satellite
             destination.Subscribe(session, listener);
         }
 
+        public void Publish(string key, string data)
+        {
+            _destinations.ForEach(x => x.Publish(GetSession(), key, data));
+        }
+
         public bool IsInterested(string key)
         {
             return _destinations.Any(x => x.Key == key);

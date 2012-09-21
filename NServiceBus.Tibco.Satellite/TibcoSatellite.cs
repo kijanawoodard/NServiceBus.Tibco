@@ -2,43 +2,53 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Principal;
+using System.Xml;
+using NServiceBus.MessageInterfaces;
 using NServiceBus.Satellites;
 using NServiceBus.Serialization;
+using NServiceBus.Serializers.XML;
 using NServiceBus.Tibco.Satellite.Configuration;
+using NServiceBus.Tibco.Satellite.Utlities;
 using NServiceBus.Unicast;
 using NServiceBus.Unicast.Transport;
+using NServiceBus.Utils;
 
 namespace NServiceBus.Tibco.Satellite
 {
-    internal class TibcoSatellite : ISatellite, IRegisterIntent
+    public class TibcoSatellite : ISatellite, IRegisterIntent
     {
         public IBus Bus { get; set; }
         private List<TibcoConnection> _connections;
-        public IMessageSerializer MessageSerializer { get; set; }
+        public XmlMessageSerializer MessageSerializer { get; set; }
+        public IMessageMapper Mapper { get; set; }
 
         public void Handle(TransportMessage message)
         {
-            TibcoEventPackage package;
+            var doc = new XmlDocument();
+            doc.Load(new MemoryStream(message.Body));
+            var messageBodyXml = doc.InnerXml;
 
-            using (var stream = new MemoryStream(message.Body))
-            {
-                package = (TibcoEventPackage)MessageSerializer.Deserialize(stream).First();
-            }
+            
 
-            foreach (var m in package.Messages)
-            {
-                using (var stream = new MemoryStream())
-                {
-                    MessageSerializer.Serialize(new object[] { m }, stream);
-                    stream.Position = 0;
-                    var sr = new StreamReader(stream);
-                    var xml = sr.ReadToEnd();
-
-                    //TODO: remove item from array wrapper
-                    //TODO: handle for xml, json, and binary??? might be easier to handle xml first to unwrap array
-                    //TODO: find destinations interested in type and publish
-                }
-            }
+//            TibcoEventPackage package;
+//
+//            using (var stream = new MemoryStream(message.Body))
+//            {
+//                package = (TibcoEventPackage) MessageSerializer.Deserialize(stream).First();
+//            }
+//
+//            using (var stream = new MemoryStream())
+//            {
+//                MessageSerializer.Serialize(new[] {package.Message}, stream);
+//                stream.Position = 0;
+//                var sr = new StreamReader(stream);
+//                var xml = sr.ReadToEnd();
+//
+//                //TODO: remove item from array wrapper
+//                //TODO: handle for xml, json, and binary??? might be easier to handle xml first to unwrap array
+//                //TODO: find destinations interested in type and publish
+//            }
         }
 
         public void Start()
@@ -49,22 +59,31 @@ namespace NServiceBus.Tibco.Satellite
                 settings
                     .Connections
                     .Select(connection =>
-                    {
-                        var destinations =
-                            connection
-                                .Destinations
-                                .Select(destination => new TibcoDestination(destination.Key, destination.Type, destination.Name));
-                        
-                        var tc = new TibcoConnection(connection.Url, connection.UserName, connection.Password, destinations);
-                        return tc;
-                    })
+                                {
+                                    var destinations =
+                                        connection
+                                            .Destinations
+                                            .Select(
+                                                destination =>
+                                                new TibcoDestination(destination.Key, destination.Type, destination.Name));
+
+                                    var tc = new TibcoConnection(connection.Url, connection.UserName,
+                                                                 connection.Password, destinations);
+                                    return tc;
+                                })
                     .ToList();
 
             Configure.Instance.ForAllTypes<IWantToRegisterIntentForTibco>(t =>
-            {
-                var ini = (IWantToRegisterIntentForTibco)Activator.CreateInstance(t);
-                ini.Init(this);
-            });            
+                                                                              {
+                                                                                  var ini =
+                                                                                      (IWantToRegisterIntentForTibco)
+                                                                                      Activator.CreateInstance(t);
+                                                                                  ini.Init(this);
+                                                                              });
+
+            Mapper.Initialize(_typeToPublish.Values.ToArray());
+            MessageSerializer = new XmlMessageSerializer(Mapper);
+            MessageSerializer.Initialize(_typeToPublish.Values.ToArray());
 
             var unicast = Bus as UnicastBus;
             if (unicast != null)
@@ -73,12 +92,27 @@ namespace NServiceBus.Tibco.Satellite
             }
         }
 
-        void MessagesSent(object sender, MessagesEventArgs e)
+        private void MessagesSent(object sender, MessagesEventArgs e)
         {
-            if (e.Messages.Length == 1 && e.Messages[0] is TibcoEventPackage)
-                return;
-            //TODO: only send types we are interesting in
-            Bus.Send(InputAddress, e.Messages); //Put them on the satellite queue to allow the main endpoint to complete
+            foreach (var message in e.Messages)
+            {
+                var type = message.GetType();
+                var publishers = _typeToPublish.Where(x => x.Value == type).ToList();
+                if (publishers.Count == 0) continue;
+
+                var xml = "";
+                using (var stream = new MemoryStream())
+                {
+                    MessageSerializer.Serialize(new object[] { message }, stream);
+                    stream.Position = 0;
+                        
+                    var doc = new XmlDocument();
+                    doc.Load(stream);
+                    xml = doc.InnerXml;
+                }
+
+                publishers.ForEach(pub => _connections.ForEach(x => x.Publish(pub.Key, xml)));
+            }
         }
 
         public void Stop()
@@ -98,9 +132,15 @@ namespace NServiceBus.Tibco.Satellite
             set { }
         }
 
-        internal static readonly Address TibcoAddress = Address.Local.SubScope("EMS");
-        
-        void IRegisterIntent.Subscribe<T>(string key)  
+        //TODO: remove this; something is wrong with the satellite creating the queue
+        public static void InstallIfNeccessary()
+        {
+            MsmqUtilities.CreateQueueIfNecessary(TibcoAddress, WindowsIdentity.GetCurrent().Name);
+        }
+
+        public static readonly Address TibcoAddress = Address.Local.SubScope("EMS");
+
+        void IRegisterIntent.Subscribe<T>(string key)
         {
             var listener = new MessageListener<T>(Bus, key);
             var connections = _connections.Where(x => x.IsInterested(key)).ToList();
@@ -111,7 +151,9 @@ namespace NServiceBus.Tibco.Satellite
 
         void IRegisterIntent.Publish<T>(string key)
         {
-            throw new NotImplementedException();
+            _typeToPublish[key] = typeof(T);
         }
+
+        private readonly Dictionary<string, Type> _typeToPublish = new Dictionary<string, Type>();
     }
 }
