@@ -15,39 +15,26 @@ namespace NServiceBus.Tibco.Satellite
         private Connection _connection;
         private Session _session;
 
-        private Connection CreateConnection()
-        {
-            var factory = new ConnectionFactory(_url);
-            var connection = factory.CreateConnection(_username, _password);
-            connection.Start();
-            return connection;
-        }
-
-        private Session GetSession()
-        {
-            _connection = _connection ?? CreateConnection();
-
-            _session = _session ?? _connection.CreateSession(false, Session.CLIENT_ACKNOWLEDGE);
-            return _session;
-        }
-
         public TibcoConnection(string url, string username, string password, IEnumerable<TibcoDestination> destinations)
         {
             _url = url;
             _username = username;
             _password = password;
             _destinations = destinations.ToList();
+
+            _session = GetSession(); //TODO: this needs a bit more thought; do we need to handle dropped sessions to tibco or does the tibco dll take care of that for us
+
+            _destinations.ForEach(x => x.SetSession(_session)); //go ahead and connect now; if something is wrong with the connection info, fail fast; doesn't take into account temporary failure
         }
 
         public void Subscribe(string key, IMessageListener listener)
         {
-            var session = GetSession();
-            _destinations.ForEach(x => x.Subscribe(session, listener));
+            _destinations.ForEach(x => x.Subscribe(key, listener));
         }
 
         public void Publish(string key, string data)
         {
-            _destinations.ForEach(x => x.Publish(GetSession(), key, data));
+            _destinations.ForEach(x => x.Publish(key, data));
         }
 
         public int InterestedDestinationCount(string key)
@@ -63,6 +50,22 @@ namespace NServiceBus.Tibco.Satellite
         public void Dispose()
         {
             _connection.Stop();
+        }
+
+        private Connection CreateConnection()
+        {
+            var factory = new ConnectionFactory(_url);
+            var connection = factory.CreateConnection(_username, _password);
+            connection.Start();
+            return connection;
+        }
+
+        private Session GetSession()
+        {
+            _connection = _connection ?? CreateConnection();
+
+            _session = _session ?? _connection.CreateSession(false, Session.CLIENT_ACKNOWLEDGE);
+            return _session;
         }
     }
 }

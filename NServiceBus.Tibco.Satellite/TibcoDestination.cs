@@ -10,6 +10,7 @@ namespace NServiceBus.Tibco.Satellite
         private readonly string _type;
         private readonly string _name;
         private bool _haveExpressedInterest;
+        private Session _session;
 
         public TibcoDestination(string key, string type, string name)
         {
@@ -22,40 +23,48 @@ namespace NServiceBus.Tibco.Satellite
             _name = name;
         }
 
-        public void Subscribe(Session session, IMessageListener listener)
+        public void SetSession(Session session)
         {
-            if (_type == "topic")
-                SubscribeTopic(session, listener);
-            else
-                SubscribeQueue(session, listener);
+            _session = session;
         }
 
-        private void SubscribeTopic(Session session, IMessageListener listener)
-        {
-            var destination = session.CreateTopic(_name);
-
-            var sub = session.CreateDurableSubscriber(destination, TibcoSatellite.TibcoAddress.ToString());
-            sub.MessageListener = listener;
-        }
-
-        private void SubscribeQueue(Session session, IMessageListener listener)
-        {
-            var destination = session.CreateQueue(_name);
-
-            var messageConsumer = session.CreateConsumer(destination);
-            messageConsumer.MessageListener = listener;
-        }
-
-        public void Publish(Session session, string key, string data)
+        public void Subscribe(string key, IMessageListener listener)
         {
             if (key != _key) return;
 
-            var destination = _type == "topic" ? session.CreateTopic(_name) as Destination : session.CreateQueue(_name);
-            var producer = session.CreateProducer(destination);
-            var message = session.CreateTextMessage(data);
+            if (_type == "topic")
+                SubscribeTopic( listener);
+            else
+                SubscribeQueue(listener);
+        }
+
+        private void SubscribeTopic(IMessageListener listener)
+        {
+            var destination = _session.CreateTopic(_name);
+
+            var sub = _session.CreateDurableSubscriber(destination, TibcoSatellite.TibcoAddress.ToString());
+            sub.MessageListener = listener;
+        }
+
+        private void SubscribeQueue(IMessageListener listener)
+        {
+            var destination = _session.CreateQueue(_name);
+
+            var messageConsumer = _session.CreateConsumer(destination);
+            messageConsumer.MessageListener = listener;
+        }
+
+        public void Publish(string key, string data)
+        {
+            if (key != _key) return;
+
+            var destination = _type == "topic" ? _session.CreateTopic(_name) as Destination : _session.CreateQueue(_name);
+            var producer = _session.CreateProducer(destination);
+            var message = _session.CreateTextMessage(data);
             producer.Send(message);
         }
 
+        //would get rid of this, but Publish doesn't happen at startup time; unfortunate naming for Publish; Subscribe makes sense, publish...not so much
         public bool IsInterested(string key)
         {
             var yes = key == _key;
