@@ -4,16 +4,14 @@ using System.IO;
 using System.Linq;
 using System.Security.Principal;
 using System.Xml;
+using log4net;
 using NServiceBus.MessageInterfaces;
 using NServiceBus.Satellites;
-using NServiceBus.Serialization;
 using NServiceBus.Serializers.XML;
 using NServiceBus.Tibco.Satellite.Configuration;
-using NServiceBus.Tibco.Satellite.Utlities;
 using NServiceBus.Unicast;
 using NServiceBus.Unicast.Transport;
 using NServiceBus.Utils;
-using log4net;
 
 namespace NServiceBus.Tibco.Satellite
 {
@@ -45,6 +43,7 @@ namespace NServiceBus.Tibco.Satellite
             RegisterIntentsForTibco();
             InitializeSerializer();
             RegisterCallBackForWhenMessagesAreSentOnTheMainProcess();
+            Logger.Info("Ready");
         }
 
         public void Stop()

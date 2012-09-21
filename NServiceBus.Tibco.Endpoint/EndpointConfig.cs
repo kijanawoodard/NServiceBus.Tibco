@@ -43,9 +43,14 @@ namespace NServiceBus.Tibco.Endpoint
 
         public void Init(IRegisterIntent register)
         {
-            register.Publish<IFoo>("hook");
-            register.Publish<IFoo>("nook");
+            register.Subscribe<Foo>("foo.sub");
+            register.Publish<IFoo>("foo.pub");
         }
+    }
+
+    public class Foo : ICommand
+    {
+        public string Id { get; set; }
     }
 
     public interface IFoo : IEvent
