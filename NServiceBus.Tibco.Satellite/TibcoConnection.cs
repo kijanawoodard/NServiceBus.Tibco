@@ -51,9 +51,9 @@ namespace NServiceBus.Tibco.Satellite
             _destinations.ForEach(x => x.Publish(GetSession(), key, data));
         }
 
-        public bool IsInterested(string key)
+        public int InterestedDestinationCount(string key)
         {
-            return _destinations.Any(x => x.Key == key);
+            return _destinations.Count(x => x.Key == key);
         }
 
         public void Dispose()

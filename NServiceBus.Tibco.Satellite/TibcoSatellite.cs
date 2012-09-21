@@ -13,6 +13,7 @@ using NServiceBus.Tibco.Satellite.Utlities;
 using NServiceBus.Unicast;
 using NServiceBus.Unicast.Transport;
 using NServiceBus.Utils;
+using log4net;
 
 namespace NServiceBus.Tibco.Satellite
 {
@@ -20,9 +21,11 @@ namespace NServiceBus.Tibco.Satellite
     {
         public IBus Bus { get; set; }
         public IMessageMapper Mapper { get; set; }
-        public XmlMessageSerializer MessageSerializer { get; set; }
-        private List<TibcoConnection> _connections;
+        public XmlMessageSerializer MessageSerializer { get; set; } //explicitly go to xml; host process may have different serialization needs than for tibco
         
+        private List<TibcoConnection> _connections;
+        private readonly Dictionary<string, Type> _typesToPublish = new Dictionary<string, Type>();
+
         public void Handle(TransportMessage message)
         {
             TibcoEventPackage package;
@@ -38,71 +41,10 @@ namespace NServiceBus.Tibco.Satellite
 
         public void Start()
         {
-            var settings = TibcoSettings.Settings;
-
-            _connections =
-                settings
-                    .Connections
-                    .Select(connection =>
-                                {
-                                    var destinations =
-                                        connection
-                                            .Destinations
-                                            .Select(
-                                                destination =>
-                                                new TibcoDestination(destination.Key, destination.Type, destination.Name));
-
-                                    var tc = new TibcoConnection(connection.Url, connection.UserName,
-                                                                 connection.Password, destinations);
-                                    return tc;
-                                })
-                    .ToList();
-
-            Configure.Instance.ForAllTypes<IWantToRegisterIntentForTibco>(t =>
-                                                                              {
-                                                                                  var ini =
-                                                                                      (IWantToRegisterIntentForTibco)
-                                                                                      Activator.CreateInstance(t);
-                                                                                  ini.Init(this);
-                                                                              });
-
-            Mapper.Initialize(_typesToPublish.Values.ToArray());
-            MessageSerializer = new XmlMessageSerializer(Mapper);
-            MessageSerializer.Initialize(_typesToPublish.Values.ToArray());
-
-            var unicast = Bus as UnicastBus;
-            if (unicast != null)
-            {
-                unicast.MessagesSent += MessagesSent;
-            }
-        }
-
-        private void MessagesSent(object sender, MessagesEventArgs e)
-        {
-            foreach (var message in e.Messages)
-            {
-                var type = message.GetType();
-                var keys = _typesToPublish.Where(x => x.Value.IsAssignableFrom(type)).Select(x => x.Key).ToList();
-                if (keys.Count == 0) continue;
-
-                var xml = "";
-                using (var stream = new MemoryStream())
-                {
-                    MessageSerializer.Serialize(new object[] { message }, stream); //TODO: handle for json, and binary, objectMessage???
-                    stream.Position = 0;
-                        
-                    var doc = new XmlDocument();
-                    doc.Load(stream);
-                    xml = doc.InnerXml;
-                }
-
-                //send to tibco from satellite queue to disconnect "tibco unreachable" from host process
-                Bus.Send<TibcoEventPackage>(TibcoAddress, x =>
-                {
-                    x.Type = _typesToPublish.First().Value.ToString(); //don't use type because it could be __impl
-                    x.Data = xml;
-                });
-            }
+            ParseSettings();
+            RegisterIntentsForTibco();
+            InitializeSerializer();
+            RegisterCallBackForWhenMessagesAreSentOnTheMainProcess();
         }
 
         public void Stop()
@@ -122,6 +64,88 @@ namespace NServiceBus.Tibco.Satellite
             set { }
         }
 
+        private void ParseSettings()
+        {
+            var settings = TibcoSettings.Settings;
+
+            _connections =
+                settings
+                    .Connections
+                    .Select(connection =>
+                    {
+                        var destinations =
+                            connection
+                                .Destinations
+                                .Select(
+                                    destination =>
+                                    new TibcoDestination(destination.Key, destination.Type, destination.Name));
+
+                        var tc = new TibcoConnection(connection.Url, connection.UserName,
+                                                     connection.Password, destinations);
+                        return tc;
+                    })
+                    .ToList();
+        }
+
+        private void RegisterIntentsForTibco()
+        {
+            Configure
+                .Instance
+                .ForAllTypes<IWantToRegisterIntentForTibco>(t =>
+                {
+                    var ini = (IWantToRegisterIntentForTibco)Activator.CreateInstance(t);
+                    ini.Init(this);
+                });
+        }
+
+        private void InitializeSerializer()
+        {
+            Mapper.Initialize(_typesToPublish.Values.ToArray());
+            MessageSerializer = new XmlMessageSerializer(Mapper);
+            MessageSerializer.Initialize(_typesToPublish.Values.ToArray());
+        }
+
+        private void RegisterCallBackForWhenMessagesAreSentOnTheMainProcess()
+        {
+            var unicast = Bus as UnicastBus;
+            if (unicast != null)
+            {
+                unicast.MessagesSent += MessagesSent;
+            }
+        }
+
+        private void MessagesSent(object sender, MessagesEventArgs e)
+        {
+            foreach (var message in e.Messages)
+            {
+                var type = message.GetType();
+                var keys = _typesToPublish.Where(x => x.Value.IsAssignableFrom(type)).Select(x => x.Key).ToList();
+                if (keys.Count == 0) continue;
+
+                var xml = GenerateXml(message);
+
+                //send to tibco from satellite queue to disconnect "tibco unreachable" from host process
+                Bus.Send<TibcoEventPackage>(TibcoAddress, x =>
+                {
+                    x.Type = _typesToPublish.First().Value.ToString(); //don't use type because it could be __impl
+                    x.Data = xml;
+                });
+            }
+        }
+
+        private string GenerateXml(object message)
+        {
+            using (var stream = new MemoryStream())
+            {
+                MessageSerializer.Serialize(new object[] { message }, stream); //TODO: handle for json, and binary, objectMessage???
+                stream.Position = 0;
+
+                var doc = new XmlDocument();
+                doc.Load(stream);
+                return doc.InnerXml;
+            }
+        }
+
         //TODO: remove this; something is wrong with the satellite creating the queue
         public static void InstallIfNeccessary()
         {
@@ -132,18 +156,28 @@ namespace NServiceBus.Tibco.Satellite
 
         void IRegisterIntent.Subscribe<T>(string key)
         {
-            var listener = new MessageListener<T>(Bus, key);
-            var connections = _connections.Where(x => x.IsInterested(key)).ToList();
-            //TODO: Throw if zero; Warn if  more than one?
+            DoWeHaveDestinationsForThisKey(key);
 
-            connections.ForEach(x => x.Subscribe(key, listener));
+            var listener = new MessageListener<T>(Bus, key);
+            _connections.ForEach(x => x.Subscribe(key, listener));
         }
 
         void IRegisterIntent.Publish<T>(string key)
         {
+            DoWeHaveDestinationsForThisKey(key);
             _typesToPublish[key] = typeof(T);
         }
 
-        private readonly Dictionary<string, Type> _typesToPublish = new Dictionary<string, Type>();
+        void DoWeHaveDestinationsForThisKey(string key)
+        {
+            var count = _connections.Sum(x => x.InterestedDestinationCount(key));
+            if (count == 0)
+                throw new ArgumentException(string.Format("There is no destination setup with key {0}", key));
+
+            if (count > 1)
+                LogManager.GetLogger(this.GetType()).Warn(string.Format("You have {0} destinations configured for key '{1}'. Consider using a topic.", count, key));
+
+            //TODO: check reverse situation where we have destinations with no registrants and warn
+        }
     }
 }

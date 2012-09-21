@@ -31,6 +31,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="log4net">
+      <HintPath>..\packages\log4net.1.2.10\lib\2.0\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="NServiceBus">
       <HintPath>..\packages\NServiceBus.3.2.8\lib\net40\NServiceBus.dll</HintPath>
     </Reference>
