@@ -96,6 +96,8 @@ namespace NServiceBus.Tibco.Satellite
                     var ini = (IWantToRegisterIntentForTibco)Activator.CreateInstance(t);
                     ini.Init(this);
                 });
+
+            _connections.ForEach(x => x.LookForDestinationsThatHaveNotShownInterestInAnyKey());
         }
 
         private void InitializeSerializer()
@@ -172,12 +174,16 @@ namespace NServiceBus.Tibco.Satellite
         {
             var count = _connections.Sum(x => x.InterestedDestinationCount(key));
             if (count == 0)
-                throw new ArgumentException(string.Format("There is no destination setup with key {0}", key));
+            {
+                Logger.Warn(string.Format("There is no destination setup for key '{0}'.", key));
+            }
 
             if (count > 1)
-                LogManager.GetLogger(this.GetType()).Warn(string.Format("You have {0} destinations configured for key '{1}'. Consider using a topic.", count, key));
-
-            //TODO: check reverse situation where we have destinations with no registrants and warn
+            {
+                Logger.Warn(string.Format("You have {0} destinations configured for key '{1}'. Consider using a topic.", count, key));
+            }
         }
+
+        private static readonly ILog Logger = LogManager.GetLogger(typeof(TibcoSatellite));
     }
 }

@@ -41,9 +41,8 @@ namespace NServiceBus.Tibco.Satellite
 
         public void Subscribe(string key, IMessageListener listener)
         {
-            var destination = _destinations.First(x => x.Key == key); //relying on the satellite to make sure this works
             var session = GetSession();
-            destination.Subscribe(session, listener);
+            _destinations.ForEach(x => x.Subscribe(session, listener));
         }
 
         public void Publish(string key, string data)
@@ -53,7 +52,12 @@ namespace NServiceBus.Tibco.Satellite
 
         public int InterestedDestinationCount(string key)
         {
-            return _destinations.Count(x => x.Key == key);
+            return _destinations.Count(x => x.IsInterested(key));
+        }
+
+        public void LookForDestinationsThatHaveNotShownInterestInAnyKey()
+        {
+            _destinations.ForEach(x => x.WarnIfNoInterestExpressed());
         }
 
         public void Dispose()

@@ -44,6 +44,7 @@ namespace NServiceBus.Tibco.Endpoint
         public void Init(IRegisterIntent register)
         {
             register.Publish<IFoo>("hook");
+            register.Publish<IFoo>("nook");
         }
     }
 
