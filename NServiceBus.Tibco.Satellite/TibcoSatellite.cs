@@ -19,36 +19,21 @@ namespace NServiceBus.Tibco.Satellite
     public class TibcoSatellite : ISatellite, IRegisterIntent
     {
         public IBus Bus { get; set; }
-        private List<TibcoConnection> _connections;
-        public XmlMessageSerializer MessageSerializer { get; set; }
         public IMessageMapper Mapper { get; set; }
-
+        public XmlMessageSerializer MessageSerializer { get; set; }
+        private List<TibcoConnection> _connections;
+        
         public void Handle(TransportMessage message)
         {
-            var doc = new XmlDocument();
-            doc.Load(new MemoryStream(message.Body));
-            var messageBodyXml = doc.InnerXml;
-
-            
-
             TibcoEventPackage package;
-//
-//            using (var stream = new MemoryStream(message.Body))
-//            {
-//                package = (TibcoEventPackage) MessageSerializer.Deserialize(stream).First();
-//            }
-//
-//            using (var stream = new MemoryStream())
-//            {
-//                MessageSerializer.Serialize(new[] {package.Message}, stream);
-//                stream.Position = 0;
-//                var sr = new StreamReader(stream);
-//                var xml = sr.ReadToEnd();
-//
-//                //TODO: remove item from array wrapper
-//                //TODO: handle for xml, json, and binary??? might be easier to handle xml first to unwrap array
-//                //TODO: find destinations interested in type and publish
-//            }
+
+            using (var stream = new MemoryStream(message.Body))
+            {
+                package = (TibcoEventPackage) MessageSerializer.Deserialize(stream).First();
+            }
+
+            var keys = _typesToPublish.Where(x => x.Value.ToString().Equals(package.Type)).Select(x => x.Key).ToList();
+            keys.ForEach(key => _connections.ForEach(x => x.Publish(key, package.Data)));
         }
 
         public void Start()
@@ -81,9 +66,9 @@ namespace NServiceBus.Tibco.Satellite
                                                                                   ini.Init(this);
                                                                               });
 
-            Mapper.Initialize(_typeToPublish.Values.ToArray());
+            Mapper.Initialize(_typesToPublish.Values.ToArray());
             MessageSerializer = new XmlMessageSerializer(Mapper);
-            MessageSerializer.Initialize(_typeToPublish.Values.ToArray());
+            MessageSerializer.Initialize(_typesToPublish.Values.ToArray());
 
             var unicast = Bus as UnicastBus;
             if (unicast != null)
@@ -97,13 +82,13 @@ namespace NServiceBus.Tibco.Satellite
             foreach (var message in e.Messages)
             {
                 var type = message.GetType();
-                var publishers = _typeToPublish.Where(x => x.Value.IsAssignableFrom(type)).ToList();
-                if (publishers.Count == 0) continue;
+                var keys = _typesToPublish.Where(x => x.Value.IsAssignableFrom(type)).Select(x => x.Key).ToList();
+                if (keys.Count == 0) continue;
 
                 var xml = "";
                 using (var stream = new MemoryStream())
                 {
-                    MessageSerializer.Serialize(new object[] { message }, stream);
+                    MessageSerializer.Serialize(new object[] { message }, stream); //TODO: handle for json, and binary, objectMessage???
                     stream.Position = 0;
                         
                     var doc = new XmlDocument();
@@ -111,7 +96,12 @@ namespace NServiceBus.Tibco.Satellite
                     xml = doc.InnerXml;
                 }
 
-                publishers.ForEach(pub => _connections.ForEach(x => x.Publish(pub.Key, xml)));
+                //send to tibco from satellite queue to disconnect "tibco unreachable" from host process
+                Bus.Send<TibcoEventPackage>(TibcoAddress, x =>
+                {
+                    x.Type = _typesToPublish.First().Value.ToString(); //don't use type because it could be __impl
+                    x.Data = xml;
+                });
             }
         }
 
@@ -151,9 +141,9 @@ namespace NServiceBus.Tibco.Satellite
 
         void IRegisterIntent.Publish<T>(string key)
         {
-            _typeToPublish[key] = typeof(T);
+            _typesToPublish[key] = typeof(T);
         }
 
-        private readonly Dictionary<string, Type> _typeToPublish = new Dictionary<string, Type>();
+        private readonly Dictionary<string, Type> _typesToPublish = new Dictionary<string, Type>();
     }
 }
