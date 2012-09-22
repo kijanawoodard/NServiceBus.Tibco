@@ -68,6 +68,10 @@
       <Project>{B8B0B7C2-4A09-4DCC-8DD4-AB588DC57B1E}</Project>
       <Name>NServiceBus.Tibco.Satellite</Name>
     </ProjectReference>
+    <ProjectReference Include="..\TIBCO.EMS.FAKE\TIBCO.EMS.FAKE.csproj">
+      <Project>{43880C42-0D7C-482A-BAD4-246D72BA7AE7}</Project>
+      <Name>TIBCO.EMS.FAKE</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

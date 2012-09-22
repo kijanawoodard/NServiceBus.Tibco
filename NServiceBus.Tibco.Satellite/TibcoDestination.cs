@@ -62,6 +62,8 @@ namespace NServiceBus.Tibco.Satellite
             var producer = _session.CreateProducer(destination);
             var message = _session.CreateTextMessage(data);
             producer.Send(message);
+
+            Logger.Info("Published to Tibco: " + data);
         }
 
         //would get rid of this, but Publish doesn't happen at startup time; unfortunate naming for Publish; Subscribe makes sense, publish...not so much

@@ -19,6 +19,9 @@
  * Feel free to modify this file as necessary, but any changes
  * may be lost when it is regenerated.
  */
+
+using System.Collections.Generic;
+
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright c Apache Software Foundation (ASF) 2007")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
@@ -49,14 +52,13 @@ namespace TIBCO.EMS
     {
         public Topic(System.String param_name)
         {
+            TopicName = param_name;
         }
         protected Topic()
         {
         }
-        public System.String TopicName
-        {
-            get { return null; }
-        }
+
+        public System.String TopicName { get; set; }
         public override System.Object Clone()
         {
             return null;
@@ -71,7 +73,7 @@ namespace TIBCO.EMS
         }
         public override System.String ToString()
         {
-            return null;
+            return TopicName;
         }
     }
     public class FederatedTopic : TIBCO.EMS.Topic, System.ICloneable
@@ -645,14 +647,13 @@ namespace TIBCO.EMS
     {
         public Queue(System.String param_name)
         {
+            QueueName = param_name;
         }
         protected Queue()
         {
         }
-        public System.String QueueName
-        {
-            get { return null; }
-        }
+
+        public System.String QueueName { get; set; }
         public override System.Object Clone()
         {
             return null;
@@ -667,7 +668,7 @@ namespace TIBCO.EMS
         }
         public override System.String ToString()
         {
-            return null;
+            return QueueName;
         }
     }
     public class FederatedQueue : TIBCO.EMS.Queue, System.ICloneable
@@ -943,18 +944,37 @@ namespace TIBCO.EMS
     }
     public class MessageConsumer : TIBCO.EMS.DPQMember
     {
-        public MessageConsumer()
+        protected MessageConsumer()
         {
+            
         }
+        public MessageConsumer(Destination destination)
+        {
+            _destination = destination;
+        }
+
         public System.String MessageSelector
         {
             get { return null; }
         }
+
+        private IMessageListener _listener;
+        private Destination _destination;
         public TIBCO.EMS.IMessageListener MessageListener
         {
-            get { return null; }
-            set { }
+            get { return _listener; }
+            set
+            {
+                _listener = value;
+                ListenerSet();
+            }
         }
+
+        protected virtual void ListenerSet()
+        {
+            TibcoTesting.RegisterListener(_destination.ToString(), MessageListener);
+        }
+
 #pragma warning disable 67
         public event TIBCO.EMS.EMSMessageHandler MessageHandler
         {
@@ -1354,15 +1374,15 @@ namespace TIBCO.EMS
         }
         public TIBCO.EMS.MessageConsumer CreateConsumer(TIBCO.EMS.Destination param_dest)
         {
-            return new MessageConsumer();
+            return new MessageConsumer(param_dest);
         }
         public TIBCO.EMS.MessageConsumer CreateConsumer(TIBCO.EMS.Destination param_dest, System.String param_messageSelector)
         {
-            return new MessageConsumer();
+            return null;
         }
         public TIBCO.EMS.MessageConsumer CreateConsumer(TIBCO.EMS.Destination param_dest, System.String param_messageSelector, System.Boolean param_noLocal)
         {
-            return new MessageConsumer();
+            return null;
         }
         public TIBCO.EMS.TemporaryTopic CreateTemporaryTopic()
         {
@@ -1374,19 +1394,21 @@ namespace TIBCO.EMS
         }
         public TIBCO.EMS.TopicSubscriber CreateDurableSubscriber(TIBCO.EMS.Topic param_topic, System.String param_name)
         {
-            return new TopicSubscriber();
+            var result = new TopicSubscriber {Topic = param_topic};
+            return result;
         }
         public TIBCO.EMS.TopicSubscriber CreateDurableSubscriber(TIBCO.EMS.Topic param_topic, System.String param_name, System.String param_messageSelector, System.Boolean param_noLocal)
         {
-            return new TopicSubscriber();
+            var result = new TopicSubscriber { Topic = param_topic };
+            return result;
         }
         public TIBCO.EMS.Topic CreateTopic(System.String param_topicName)
         {
-            return null;
+            return new Topic(param_topicName);
         }
         public TIBCO.EMS.Queue CreateQueue(System.String param_queueName)
         {
-            return null;
+            return new Queue(param_queueName);
         }
         public TIBCO.EMS.MessageProducer CreateProducer(TIBCO.EMS.Destination param_dest)
         {
@@ -1922,10 +1944,14 @@ namespace TIBCO.EMS
         public TopicSubscriber()
         {
         }
-        public TIBCO.EMS.Topic Topic
+
+        public TIBCO.EMS.Topic Topic { get; set; }
+
+        protected override void ListenerSet()
         {
-            get { return null; }
+            TibcoTesting.RegisterListener(Topic.TopicName, MessageListener);
         }
+
         public System.Boolean NoLocal
         {
             get { return false; }
@@ -1955,4 +1981,21 @@ namespace TIBCO.EMS
         {
         }
     }
+
+    public static class TibcoTesting
+    {
+        private static Dictionary<string, IMessageListener> _destinations = new Dictionary<string, IMessageListener>();  
+
+        public static void RegisterListener(string name, IMessageListener listener)
+        {
+            _destinations[name] = listener;
+        }
+
+        public static void SendMessage(string name, string data)
+        {
+            var message = new TextMessage(new Session(), data);
+            _destinations[name].OnMessage(message);
+        }
+    }
+    
 }
