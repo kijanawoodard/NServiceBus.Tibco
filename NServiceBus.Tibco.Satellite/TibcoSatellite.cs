@@ -117,6 +117,7 @@ namespace NServiceBus.Tibco.Satellite
 
         private void MessagesSent(object sender, MessagesEventArgs e)
         {
+            //NOTE: tried Bus.ForwardCurrentMessageTo() but got a null reference exception. manually doing Bus.Send resulted in exception for violating convention for Events
             foreach (var message in e.Messages)
             {
                 var type = message.GetType();
