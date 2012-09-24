@@ -23,7 +23,7 @@
 using System.Collections.Generic;
 
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright c Apache Software Foundation (ASF) 2007")]
-[assembly: System.Reflection.AssemblyVersionAttribute("6.0.1.0")]
+[assembly: System.Reflection.AssemblyVersionAttribute("1.0.601.3")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TIBCO Enterprise Message Service .NET API")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("TIBCO Software Inc.")]

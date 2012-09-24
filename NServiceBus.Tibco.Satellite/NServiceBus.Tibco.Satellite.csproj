@@ -42,23 +42,17 @@
     <Reference Include="NServiceBus.Core, Version=3.2.0.0, Culture=neutral, PublicKeyToken=9fc386479f8a226c, processorArchitecture=MSIL">
       <HintPath>..\packages\NServiceBus.3.2.8\lib\net40\NServiceBus.Core.dll</HintPath>
     </Reference>
-    <Reference Include="NServiceBus.Tibco.Satellite, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\..\Projects\GameInformer\branch\sprint43\GameInformer.com\GI.Content.Articles\GI.Content.Articles.Endpoint\lib\NServiceBus.Tibco.Satellite.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq">
-      <EmbedInteropTypes>False</EmbedInteropTypes>
-    </Reference>
+    <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="TIBCO.EMS, Version=6.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="TIBCO.EMS, Version=1.0.601.3, Culture=neutral, PublicKeyToken=5b83db8ff05c64ba, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\..\Projects\GameInformer\branch\sprint43\GameInformer.com\GI.Content.Articles\GI.Content.Articles.Endpoint\lib\TIBCO.EMS.dll</HintPath>
+      <HintPath>lib\TIBCO.EMS.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
