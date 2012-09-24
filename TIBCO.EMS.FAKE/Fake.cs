@@ -23,14 +23,14 @@
 using System.Collections.Generic;
 
 [assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright c Apache Software Foundation (ASF) 2007")]
-[assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
+[assembly: System.Reflection.AssemblyVersionAttribute("6.0.1.0")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TIBCO Enterprise Message Service .NET API")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("TIBCO Software Inc.")]
 [assembly: System.Reflection.AssemblyProductAttribute("TIBCO EMS")]
 [assembly: System.Diagnostics.DebuggableAttribute(false, true)]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("This file is a doppleganger of the original assembly.  This assembly only exposes the public API to be used in a testing compilation environment.  TIBCO Enterprise Message Service .NET API")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("4.1.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("6.0.1")]
 [assembly: System.Reflection.AssemblyTrademarkAttribute("TIB, TIBCO, Information Bus, The Power of Now, TIBCO Adapter, and TIBCO Rendezvous are either registered trademarks or trademarks of TIBCO Software Inc. in the United States and/or other countries.")]
 namespace TIBCO.EMS
 {
