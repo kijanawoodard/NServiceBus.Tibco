@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Security.Principal;
 using System.Xml;
+using NServiceBus.MessageInterfaces.MessageMapper.Reflection;
+using NServiceBus.Serialization;
+using NServiceBus.Serializers.Binary;
 using log4net;
 using NServiceBus.MessageInterfaces;
 using NServiceBus.Satellites;
@@ -19,7 +23,9 @@ namespace NServiceBus.Tibco.Satellite
     {
         public IBus Bus { get; set; }
         public IMessageMapper Mapper { get; set; }
-        public XmlMessageSerializer MessageSerializer { get; set; } //explicitly go to xml; host process may have different serialization needs than for tibco
+        public IMessageSerializer HostMessageSerializer { get; set; }
+
+        private XmlMessageSerializer _tibcoMessageSerializer; //explicitly go to xml; host process may have different serialization needs than for tibco; plus we need to initialize with our custom types or find a way to tell the host serializer about them
         
         private List<TibcoConnection> _connections;
         private readonly Dictionary<string, Type> _typesToPublish = new Dictionary<string, Type>();
@@ -30,7 +36,8 @@ namespace NServiceBus.Tibco.Satellite
 
             using (var stream = new MemoryStream(message.Body))
             {
-                package = (TibcoEventPackage) MessageSerializer.Deserialize(stream).First();
+                stream.Position = 0;
+                package = (TibcoEventPackage)HostMessageSerializer.Deserialize(stream).First();
             }
 
             var keys = _typesToPublish.Where(x => x.Value.ToString().Equals(package.Type)).Select(x => x.Key).ToList();
@@ -101,9 +108,11 @@ namespace NServiceBus.Tibco.Satellite
 
         private void InitializeSerializer()
         {
-            Mapper.Initialize(_typesToPublish.Values.ToArray());
-            MessageSerializer = new XmlMessageSerializer(Mapper);
-            MessageSerializer.Initialize(_typesToPublish.Values.ToArray());
+            var serializerTypes = _typesToPublish.Values.ToArray().Concat(new[] { typeof(TibcoEventPackage) }).ToArray(); //tell the serializer about our special types
+            
+            Mapper.Initialize(serializerTypes);
+            _tibcoMessageSerializer = new XmlMessageSerializer(Mapper);
+            _tibcoMessageSerializer.Initialize(serializerTypes);
         }
 
         private void RegisterCallBackForWhenMessagesAreSentOnTheMainProcess()
@@ -139,12 +148,12 @@ namespace NServiceBus.Tibco.Satellite
         {
             using (var stream = new MemoryStream())
             {
-                MessageSerializer.Serialize(new object[] { message }, stream); //TODO: handle for json, and binary, objectMessage???
+                _tibcoMessageSerializer.Serialize(new object[] { message }, stream); //TODO: handle for json, and binary, objectMessage???
                 stream.Position = 0;
 
                 var doc = new XmlDocument();
                 doc.Load(stream);
-                return doc.InnerXml;
+                return doc.LastChild.InnerXml;
             }
         }
 
