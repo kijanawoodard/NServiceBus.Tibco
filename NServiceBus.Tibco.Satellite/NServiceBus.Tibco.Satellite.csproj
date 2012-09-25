@@ -50,9 +50,8 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="TIBCO.EMS, Version=1.0.601.3, Culture=neutral, PublicKeyToken=5b83db8ff05c64ba, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>lib\TIBCO.EMS.dll</HintPath>
+    <Reference Include="TIBCO.EMS">
+      <HintPath>..\TIBCO.EMS.FAKE\bin\Debug\TIBCO.EMS.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
